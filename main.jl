@@ -88,3 +88,64 @@ end
 @assert false == @show check_policy_v2("2-9 c: ccccccccc")
 
 @assert 443 == @show count(check_policy_v2.(day_2_input))
+
+
+# Day 3
+
+# The toboggan can only follow a few specific slopes (you opted for a cheaper
+# model that prefers rational numbers); start by counting all the trees you
+# would encounter for the slope right 3, down 1:
+
+day_3_sample = [
+    "..##.......",
+    "#...#...#..",
+    ".#....#..#.",
+    "..#.#...#.#",
+    ".#...##..#.",
+    "..#.##.....",
+    ".#.#.#....#",
+    ".#........#",
+    "#.##...#...",
+    "#...##....#",
+    ".#..#...#.#"]
+day_3_input = readlines(open("input-03"))
+
+parse_trees(line) = map(c -> (c == '#'), collect(line))
+
+@assert [false, false, true, true, false] == parse_trees("..##.")
+
+function count_trees(input_map, delta)
+    map = parse_trees.(input_map)
+    dx, dy = delta
+    x, y = 1, 1
+    tree_count = 0
+    while y <= length(map)
+        if map[y][x]
+            tree_count += 1
+        end
+        x += dx
+        y += dy
+        if x > length(map[1])
+            # Assumption: dx < width(input_map)
+            x -= length(map[1])
+        end
+    end
+    tree_count
+end
+
+@assert 7 == @show count_trees(day_3_sample, (3, 1))
+@assert 250 == @show count_trees(day_3_input, (3, 1))
+
+## Part 2
+
+# What do you get if you multiply together the number of trees encountered on each of the listed slopes?
+# Right 1, down 1.
+# Right 3, down 1. (This is the slope you already checked.)
+# Right 5, down 1.
+# Right 7, down 1.
+# Right 1, down 2.
+
+slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)]
+
+@assert 336 == @show prod(count_trees.(Ref(day_3_sample),slopes))
+@assert 1592662500 == @show prod(count_trees.(Ref(day_3_input),slopes))
