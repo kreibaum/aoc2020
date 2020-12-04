@@ -149,3 +149,124 @@ slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)]
 
 @assert 336 == @show prod(count_trees.(Ref(day_3_sample),slopes))
 @assert 1592662500 == @show prod(count_trees.(Ref(day_3_input),slopes))
+
+
+# Day 4
+
+# Count the number of valid passports - those that have all required fields.
+# Treat cid as optional. In your batch file, how many passports are valid?
+
+day_4_sample = [
+    "ecl:gry pid:860033327 eyr:2020 hcl:#fffffd",
+    "byr:1937 iyr:2017 cid:147 hgt:183cm",
+    "",
+    "iyr:2013 ecl:amb cid:350 eyr:2023 pid:028048884",
+    "hcl:#cfa07d byr:1929",
+    "",
+    "hcl:#ae17e1 iyr:2013",
+    "eyr:2024",
+    "ecl:brn pid:760753108 byr:1931",
+    "hgt:179cm",
+    "",
+    "hcl:#cfa07d eyr:2025 pid:166559648",
+    "iyr:2011 ecl:brn hgt:59in" ]
+
+day_4_input = readlines(open("input-04"))
+
+function parse_passport_list(input)
+    passports = []
+    next_passport = Dict()
+    for line in input
+        if line == ""
+            push!(passports, next_passport)
+            next_passport = Dict()
+        else
+            for pair in split(line, " ")
+                pair_split = split(pair, ":")
+                push!(next_passport, pair_split[1] => pair_split[2])
+            end
+        end
+    end
+    push!(passports, next_passport)
+    passports
+end
+
+@assert 4 == length( parse_passport_list(day_4_sample))
+
+
+# byr (Birth Year)
+# iyr (Issue Year)
+# eyr (Expiration Year)
+# hgt (Height)
+# hcl (Hair Color)
+# ecl (Eye Color)
+# pid (Passport ID)
+# cid (Country ID) # This is where we cheat
+
+passport_cheat_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"]
+
+function is_passport_valid_cheat(passport)
+    all(haskey.(Ref(passport), passport_cheat_fields))
+end
+
+@assert [true, false, true, false] == is_passport_valid_cheat.(parse_passport_list(day_4_sample))
+@assert 2 == @show count(is_passport_valid_cheat.(parse_passport_list(day_4_sample)))
+@assert 210 == @show count(is_passport_valid_cheat.(parse_passport_list(day_4_input)))
+
+## Part 2
+# The line is moving more quickly now, but you overhear airport security talking
+# about how passports with invalid data are getting through. Better add some
+# data validation, quick!
+
+function is_field_valid(key::String, value)
+    if key == "byr"
+        occursin(r"^[0-9]{4}$", value) && 1920 <= parse(Int, value) <= 2002
+    elseif key == "iyr"
+        occursin(r"^[0-9]{4}$", value) && 2010 <= parse(Int, value) <= 2020
+    elseif key == "eyr"
+        occursin(r"^[0-9]{4}$", value) && 2020 <= parse(Int, value) <= 2030
+    elseif key == "hgt"
+        m = match(r"([0-9]+)(in|cm)", value)
+        if m == Nothing()
+            false
+        elseif m[2] == "cm"
+            150 <= parse(Int, m[1]) <= 193
+        else
+            59 <= parse(Int, m[1]) <= 76
+        end
+    elseif key == "hcl"
+        occursin(r"^#[0-9a-f]{6}$", value)
+    elseif key == "ecl"
+        value in ["amb", "blu", "brn", "gry", "grn", "hzl", "oth"]
+    elseif key == "pid"
+        occursin(r"^[0-9]{9}$", value)
+    end
+end
+
+
+# Test suite
+@assert true == is_field_valid("byr", "2002" )
+@assert false == is_field_valid("byr", "2003" )
+@assert true == is_field_valid("hgt", "60in" )
+@assert true == is_field_valid("hgt", "190cm" )
+@assert false == is_field_valid("hgt", "190in" )
+@assert false == is_field_valid("hgt", "190" )
+@assert true == is_field_valid("hcl", "#123abc" )
+@assert false == is_field_valid("hcl", "#123abz" )
+@assert false == is_field_valid("hcl", "123abc" )
+@assert true == is_field_valid("ecl", "brn" )
+@assert false == is_field_valid("ecl", "wat" )
+@assert true == is_field_valid("pid", "000000001" )
+@assert false == is_field_valid("pid", "0123456789" )
+
+
+function is_field_valid(passport::Dict, key::String)
+    haskey(passport, key) && is_field_valid(key, passport[key])
+end
+
+function is_passport_valid_fields_cheat(passport)
+    all(is_field_valid.(Ref(passport), passport_cheat_fields))
+end
+
+
+@assert 131 == @show count(is_passport_valid_fields_cheat.(parse_passport_list(day_4_input)))
