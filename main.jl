@@ -270,3 +270,51 @@ end
 
 
 @assert 131 == @show count(is_passport_valid_fields_cheat.(parse_passport_list(day_4_input)))
+
+
+# Day 5
+
+# As a sanity check, look through your list of boarding passes. What is the
+# highest seat ID on a boarding pass?
+
+# Well that just sounds like binary with extra steps.
+
+
+# "BFFFBBFRRR": row 70, column 7, seat ID 567.
+# "FFFBBBFRRR": row 14, column 7, seat ID 119.
+# "BBFFBBFRLL": row 102, column 4, seat ID 820.
+
+seat_digits = Dict('B' => 1, 'F' => 0, 'R' => 1, 'L' => 0)
+
+function parse_seat_id(seat_id::String)
+    acc = 0
+    for c in seat_id
+        acc = 2 * acc + seat_digits[c]
+    end
+    acc
+    # reduce((new, acc) -> (2 * acc + seat_digits[new]), split(seat_id, ""), 0)
+end
+
+@assert 567 == parse_seat_id("BFFFBBFRRR")
+@assert 119 == parse_seat_id("FFFBBBFRRR")
+@assert 820 == parse_seat_id("BBFFBBFRLL")
+
+day_5_input = parse_seat_id.(readlines(open("input-05")))
+
+@assert 896 == @show maximum(day_5_input)
+
+# Ding! The "fasten seat belt" signs have turned on. Time to find your seat.
+
+function find_empty_seat(taken_seats)
+    sorted_seats = sort(taken_seats)
+    check_seat_id = sorted_seats[1]
+    for seat_id in sorted_seats
+        if seat_id != check_seat_id
+            return check_seat_id
+        else
+            check_seat_id += 1
+        end
+    end
+end
+
+@assert 659 == @show find_empty_seat(day_5_input)
