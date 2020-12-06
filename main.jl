@@ -318,3 +318,46 @@ function find_empty_seat(taken_seats)
 end
 
 @assert 659 == @show find_empty_seat(day_5_input)
+
+
+# Day 6
+
+# As your flight approaches the regional airport where you'll switch to a much
+# larger plane, customs declaration forms are distributed to the passengers.
+
+day_6_input = readlines(open("input-06"))
+
+function group_declarations_union( single_declarations )
+    groups = []
+    group = Set()
+    for line in single_declarations
+        if line == ""
+            push!(groups, group)
+            group = Set()
+        else
+            line_declarations = Set(collect(line))
+            union!(group, line_declarations)
+        end
+    end
+    push!(groups, group)
+    groups
+end
+
+function group_declarations_intersect( single_declarations )
+    groups = []
+    group = Set(collect("abcdefghijklmnopqrstuvwxyz"))
+    for line in single_declarations
+        if line == ""
+            push!(groups, group)
+            group = Set(collect("abcdefghijklmnopqrstuvwxyz"))
+        else
+            line_declarations = Set(collect(line))
+            intersect!(group, line_declarations)
+        end
+    end
+    push!(groups, group)
+    groups
+end
+
+@assert 6551 == @show sum(length.(group_declarations_union(day_6_input)))
+@assert 3358 == @show sum(length.(group_declarations_intersect(day_6_input)))
