@@ -361,3 +361,104 @@ end
 
 @assert 6551 == @show sum(length.(group_declarations_union(day_6_input)))
 @assert 3358 == @show sum(length.(group_declarations_intersect(day_6_input)))
+
+
+# Day 7
+
+# You land at the regional airport in time for your next flight. In fact, it
+# looks like you'll even have time to grab some food: all flights are currently
+# delayed due to issues in luggage processing.
+
+day_7_sample = [
+    "light red bags contain 1 bright white bag, 2 muted yellow bags.",
+    "dark orange bags contain 3 bright white bags, 4 muted yellow bags.",
+    "bright white bags contain 1 shiny gold bag.",
+    "muted yellow bags contain 2 shiny gold bags, 9 faded blue bags.",
+    "shiny gold bags contain 1 dark olive bag, 2 vibrant plum bags.",
+    "dark olive bags contain 3 faded blue bags, 4 dotted black bags.",
+    "vibrant plum bags contain 5 faded blue bags, 6 dotted black bags.",
+    "faded blue bags contain no other bags.",
+    "dotted black bags contain no other bags." ]
+day_7_input = readlines(open("input-07"))
+
+function parse_bag_rule(rules) :: Tuple{Dict{Any, Set}, Dict{Any, Vector}}
+    reverse_map = Dict{Any, Set}()
+    forward_map = Dict{Any, Vector}()
+    for line in rules
+        outside_color = match(r"(.+) bags contain", line)[1]
+        has_no_content = occursin(r"no other bags", line)
+        for m in eachmatch(r"([0-9]+) ([^,.]+) bags?", line)
+            content_count, content_color = m.captures
+            connect!(reverse_map, content_color, outside_color)
+            connect!(forward_map, outside_color, (parse(Int, content_count), content_color))
+            # push!(forward_map, outside_color => push!(get(forward_map, outside_color, Vector()), (content_count, content_color)))
+        end
+    end
+    (reverse_map, forward_map)
+end
+
+function connect!(map :: Dict{Any, Set}, source, target)
+    push!(map, source => push!(get(map, source, Set()), target))
+end
+
+function connect!(map :: Dict{Any, Vector}, source, target)
+    push!(map, source => push!(get(map, source, Vector()), target))
+end
+
+# You have a shiny gold bag. If you wanted to carry it in at least one other
+# bag, how many different bag colors would be valid for the outermost bag?
+# (In other words: how many colors can, eventually, contain at least one shiny
+# gold bag?)
+
+# This is a graph question. Find all colors c s.th. there exists a
+# "can contain" path from c to "shiny gold".
+
+function reachable_from(directed_graph::Dict, starting_node) :: Set
+    seen = Set()
+    todo_list = Set(Ref(starting_node))
+    while length(todo_list) > 0
+        node = pop!(todo_list)
+        targets = Set(get(directed_graph, node, Set())) # Copy, for mutation
+        setdiff!(targets, seen) # we only care about never seen nodes
+        union!(seen, targets)
+        union!(todo_list, targets)
+    end
+    seen
+end
+
+@assert 4 == @show length(reachable_from(parse_bag_rule(day_7_sample)[1], "shiny gold"))
+@assert 131 == @show length(reachable_from(parse_bag_rule(day_7_input)[1], "shiny gold"))
+
+# Part 2
+
+# How many individual bags are required inside your single shiny gold bag?
+
+# This function assumes the graph described by forward_map is loop free.
+# Otherwise it will run into an infinite loop.
+function count_bags!(cache, forward_map, color)
+    cached_value = get(cache, color, -1)
+    if cached_value >= 0
+        return cached_value
+    end
+    # Not in cache, so we need to calculate it.
+    total = 0
+    for content in get(forward_map, color, Vector())
+        count, inner_color = content
+        inner_count = count_bags!(cache, forward_map, inner_color)
+        total = total + count * (inner_count + 1)
+    end
+    push!(cache, color => total)
+    total
+end
+
+day_7_sample_2 = [
+    "shiny gold bags contain 2 dark red bags.", 
+    "dark red bags contain 2 dark orange bags.", 
+    "dark orange bags contain 2 dark yellow bags.", 
+    "dark yellow bags contain 2 dark green bags.", 
+    "dark green bags contain 2 dark blue bags.", 
+    "dark blue bags contain 2 dark violet bags.", 
+    "dark violet bags contain no other bags."]
+
+@assert 126 == @show count_bags!(Dict(), parse_bag_rule(day_7_sample_2)[2], "shiny gold")
+@assert 11261 == @show count_bags!(Dict(), parse_bag_rule(day_7_input)[2], "shiny gold")
