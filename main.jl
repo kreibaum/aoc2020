@@ -462,3 +462,126 @@ day_7_sample_2 = [
 
 @assert 126 == @show count_bags!(Dict(), parse_bag_rule(day_7_sample_2)[2], "shiny gold")
 @assert 11261 == @show count_bags!(Dict(), parse_bag_rule(day_7_input)[2], "shiny gold")
+
+
+# Day 8 - Write a VM day :-)
+
+@enum Opcode begin
+    NoOp
+    Accumulate
+    Jump
+end
+
+# For now, an instruction is Tuple{Opcode, Int64}
+
+day_8_sample = [
+    "nop +0",
+    "acc +1",
+    "jmp +4",
+    "acc +3",
+    "jmp -3",
+    "acc -99",
+    "acc +1",
+    "jmp -4",
+    "acc +6"]
+day_8_input = readlines(open("input-08"))
+
+function parse_instruction(line :: String) :: Tuple{Opcode, Int64}
+    m = match(r"([a-z]+) ((\+|-)[0-9]+)", line)
+    (parse_opcode(m[1]), parse(Int64, m[2]))
+end
+
+function parse_opcode(code) :: Opcode
+    if code == "nop"
+        NoOp
+    elseif code == "acc"
+        Accumulate
+    elseif code == "jmp"
+        Jump
+    else
+        throw(ArgumentError("code $code not recognized"))
+    end
+end
+
+mutable struct ElfVM
+    code::Vector{Tuple{Opcode, Int64}}
+    instructionPointer::Int
+    accumulator::Int64
+end
+
+"""Initalizes an ElfVM with the instructionPointer set to the first line."""
+function ElfVM(code)
+    ElfVM(code, 1, 0)
+end
+
+
+function Base.copy(vm::ElfVM)::ElfVM
+    ElfVM(copy(vm.code), vm.instructionPointer, vm.accumulator)
+end
+
+function step!(vm::ElfVM)
+    instr, param = vm.code[vm.instructionPointer]
+    if instr == NoOp
+        vm.instructionPointer += 1
+    elseif instr == Accumulate
+        vm.accumulator += param
+        vm.instructionPointer += 1
+    elseif instr == Jump
+        vm.instructionPointer += param
+    end
+end
+
+function is_halted(vm::ElfVM) :: Bool
+    vm.instructionPointer > length(vm.code)
+end
+
+function detect_cycle!(vm::ElfVM) :: Union{Int64, Nothing}
+    seen = Set()
+    while true
+        if is_halted(vm)
+            return Nothing()
+        elseif vm.instructionPointer in seen
+            return vm.accumulator
+        end
+        push!(seen, vm.instructionPointer)
+        step!(vm)
+    end
+end
+
+@assert 5 == @show detect_cycle!(ElfVM(parse_instruction.(day_8_sample)))
+@assert 1675 == @show detect_cycle!(ElfVM(parse_instruction.(day_8_input)))
+
+# Part 2
+
+# Fix the program so that it terminates normally by changing exactly one jmp
+# (to nop) or nop (to jmp). What is the value of the accumulator after the
+# program terminates?
+
+function switch_opcode(original::Opcode) :: Opcode
+    if original == NoOp
+        Jump
+    elseif original == Jump
+        NoOp
+    else
+        original
+    end
+end
+
+function fix_program(original_vm::ElfVM) :: Int64
+    for i in 1:length(original_vm.code)
+        vm = copy(original_vm)
+        
+        # Try to fix the vm
+        old_opcode, old_param = vm.code[i]
+        vm.code[i] = (switch_opcode(old_opcode), old_param)
+
+        cycle_result = detect_cycle!(vm)
+        if cycle_result == Nothing()
+            return vm.accumulator
+        end
+    end
+    throw("No fix found")
+end
+
+@assert 8 == @show fix_program(ElfVM(parse_instruction.(day_8_sample)))
+@assert 1532 == @show fix_program(ElfVM(parse_instruction.(day_8_input)))
