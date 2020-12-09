@@ -585,3 +585,71 @@ end
 
 @assert 8 == @show fix_program(ElfVM(parse_instruction.(day_8_sample)))
 @assert 1532 == @show fix_program(ElfVM(parse_instruction.(day_8_input)))
+
+
+# Day 9
+
+# The data appears to be encrypted with the eXchange-Masking Addition System (XMAS)
+# which, conveniently for you, is an old cypher with an important weakness.
+
+day_9_sample = [35, 20, 15, 25, 47, 40, 62, 55, 65, 95, 102, 117, 150, 182, 127,
+    219, 299, 277, 309, 576]
+day_9_input = parse.(Int, readlines(open("input-09")))
+
+function check_XMAS_code(input; preamble_length=15, offset=0)
+    choices = input[1+offset:preamble_length+offset]
+    target_sum = input[preamble_length+offset+1]
+    for i in 1:preamble_length, j in i+1:preamble_length
+        if choices[i] + choices[j] == target_sum
+            return (i, j)
+        end
+    end
+    Nothing()
+end
+
+function find_first_invalid_XMAS_code(input; preamble_length=25)
+    for offset in 0:length(input)-preamble_length
+        combination = check_XMAS_code(input; preamble_length= preamble_length, offset = offset)
+        if combination == Nothing()
+            return input[preamble_length+offset+1]
+        end
+    end
+    Nothing()
+end
+
+@assert 127 == @show find_first_invalid_XMAS_code(day_9_sample; preamble_length=5)
+@assert 18272118 == @show find_first_invalid_XMAS_code(day_9_input; preamble_length=25)
+
+# Part 2
+
+# The final step in breaking the XMAS encryption relies on the invalid number
+# you just found: you must find a contiguous set of at least two numbers in your
+# list which sum to the invalid number from step 1.
+
+function find_continuous(input, invalid_number)
+    # start_ptr >= end_ptr, imagine a snake game snake.
+    start_ptr = 1
+    end_ptr = 1
+    sum = input[1]
+    while sum != invalid_number
+        if sum > invalid_number
+            sum -= input[end_ptr]
+            end_ptr += 1
+        elseif sum < invalid_number
+            start_ptr += 1
+            sum += input[start_ptr]
+        end
+    end
+    (start_ptr, end_ptr)
+end
+
+function find_min_max_sum(input; preamble_length=25)
+    invalid_number = find_first_invalid_XMAS_code(input; preamble_length = preamble_length)
+    start_ptr, end_ptr = find_continuous(input, invalid_number)
+    # remember, start_ptr is the snake head and is greater than the tail end_ptr
+    sum_range = input[end_ptr:start_ptr]
+    minimum(sum_range) + maximum(sum_range)
+end
+
+@assert 62 == @show find_min_max_sum(day_9_sample; preamble_length=5)
+@assert 2186361 == @show find_min_max_sum(day_9_input; preamble_length=25)
