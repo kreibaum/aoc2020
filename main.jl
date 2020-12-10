@@ -653,3 +653,65 @@ end
 
 @assert 62 == @show find_min_max_sum(day_9_sample; preamble_length=5)
 @assert 2186361 == @show find_min_max_sum(day_9_input; preamble_length=25)
+
+
+# Day 10, Joltage
+
+day_10_sample_1 = [ 16, 10, 15, 5, 1, 11, 7, 19, 6, 12, 4 ]
+day_10_sample_2 = [ 28, 33, 18, 42, 31, 14, 46, 20, 48, 47, 24, 23, 49, 45, 19,
+    38, 39, 11, 1, 32, 25, 35, 8, 17, 7, 9, 4, 2, 34, 10, 3 ]
+day_10_input = parse.(Int, readlines(open("input-10")))
+
+function joltage_difference_list(chargers)
+    chargers_sorted = copy(chargers)
+    push!(chargers_sorted, 0)
+    chargers_sorted = sort!(chargers_sorted)
+    push!(chargers_sorted, chargers_sorted[end]+3)
+    differences = [chargers_sorted[i] - chargers_sorted[i-1] for i in 2:length(chargers_sorted)]
+end
+
+function joltage_chain_product(chargers)
+    differences = joltage_difference_list(chargers)
+    @assert 0 == count(i -> i == 2, differences)
+    count(i -> i == 1, differences) * count(i -> i == 3, differences)
+end
+
+@assert 35 == @show joltage_chain_product(day_10_sample_1)
+@assert 220 == @show joltage_chain_product(day_10_sample_2)
+@assert 1820 == @show joltage_chain_product(day_10_input)
+
+# Part 2
+
+# How many choices are there for [3, 1, 1, ..., 1, 3] with n-1 ones?
+_bcc = [1, 1, 2]
+
+for i in 4:100
+    push!(_bcc, _bcc[i-1] + _bcc[i-2] + _bcc[i-3])
+end
+
+block_choices(n) = _bcc[n]
+
+@assert block_choices(4) == 4
+@assert block_choices(5) == 7
+
+function total_pathways(chargers)
+    differences = joltage_difference_list(chargers)
+    product = 1
+    len = 0
+    for i in differences
+        if i == 1
+            len += 1
+        elseif i == 3
+            len += 1
+            product *= block_choices(len)
+            len = 0
+        else
+            throw("Unexpected difference between chargers")
+        end
+    end
+    product
+end
+
+@assert 8 == @show total_pathways(day_10_sample_1)
+@assert 19208 == @show total_pathways(day_10_sample_2)
+@assert 3454189699072 == @show total_pathways(day_10_input)
