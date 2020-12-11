@@ -715,3 +715,120 @@ end
 @assert 8 == @show total_pathways(day_10_sample_1)
 @assert 19208 == @show total_pathways(day_10_sample_2)
 @assert 3454189699072 == @show total_pathways(day_10_input)
+
+
+# Day 11 -- Cellular Automata
+
+day_11_sample = [
+    "L.LL.LL.LL", 
+    "LLLLLLL.LL", 
+    "L.L.L..L..", 
+    "LLLL.LL.LL", 
+    "L.LL.LL.LL", 
+    "L.LLLLL.LL", 
+    "..L.L.....", 
+    "LLLLLLLLLL", 
+    "L.LLLLLL.L", 
+    "L.LLLLL.LL" ]
+day_11_input = readlines(open("input-11"))
+
+function parse_seat_layout(layout)
+    is_seat.(hcat(collect.(layout)...))
+end
+
+is_seat(char::Char) = char == 'L'
+
+function evolve_seat_occupation(layout, occupation = zeros(Int8, size(layout)))
+    w, h = size(layout)
+    count = count_nbhd.(Ref(occupation), 1:w, transpose(1:h))
+    next_occupation.(count, occupation, layout)
+end
+
+function evolve_seat_occupation_part_2(layout, occupation = zeros(Int8, size(layout)))
+    w, h = size(layout)
+    count = count_view.(Ref(layout), Ref(occupation), 1:w, transpose(1:h))
+    next_occupation.(count, occupation, layout; tollerance = 5)
+end
+
+function count_nbhd(occupation, x, y)
+    w, h = size(occupation)
+    count = Int8(0)
+    for i in -1:1, j in -1:1
+        if i == 0 && j == 0
+            continue
+        end
+        _x = x + i
+        _y = y + j
+        if (1 <= _x <= w) && (1 <= _y <= h)
+            count += occupation[_x, _y]
+        end
+    end
+    count
+end
+
+# Now, instead of considering just the eight immediately adjacent seats,
+# consider the first seat in each of those eight directions.
+function count_view(layout, occupation, x, y)
+    w, h = size(occupation)
+    count = Int8(0)
+    for i in -1:1, j in -1:1
+        if i == 0 && j == 0
+            continue
+        end
+        for t in 1:w
+            _x = x + i * t
+            _y = y + j * t
+            if !((1 <= _x <= w) && (1 <= _y <= h))
+                break
+            elseif layout[_x, _y]
+                if (1 <= _x <= w) && (1 <= _y <= h)
+                    count += occupation[_x, _y]
+                end
+                break
+            end
+        end
+    end
+    count
+end
+
+
+function next_occupation(count::Int8, occupation::Int8, is_seat::Bool; tollerance = 4) :: Int8
+    if is_seat && occupation == 0 && count == 0
+        # If a seat is empty (L) and there are no occupied seats adjacent to it,
+        # the seat becomes occupied.
+        1
+    elseif is_seat && occupation == 1 && count >= tollerance
+        # If a seat is occupied (#) and four or more seats adjacent to it are
+        # also occupied, the seat becomes empty.
+        0
+    else
+        # Otherwise, the seat's state does not change.
+        occupation
+    end
+end
+
+function evolve_to_fixed_point(layout)
+    occupation = evolve_seat_occupation(layout)
+    new_occupation = evolve_seat_occupation(layout, occupation)
+    while occupation != new_occupation
+        occupation = new_occupation
+        new_occupation = evolve_seat_occupation(layout, occupation)
+    end
+    occupation
+end
+
+@assert 37 == @show sum(evolve_to_fixed_point(parse_seat_layout(day_11_sample)))
+@assert 2427 == @show sum(evolve_to_fixed_point(parse_seat_layout(day_11_input)))
+
+function evolve_to_fixed_point_part_2(layout)
+    occupation = evolve_seat_occupation_part_2(layout)
+    new_occupation = evolve_seat_occupation_part_2(layout, occupation)
+    while occupation != new_occupation
+        occupation = new_occupation
+        new_occupation = evolve_seat_occupation_part_2(layout, occupation)
+    end
+    occupation
+end
+
+@assert 26 == @show sum(evolve_to_fixed_point_part_2(parse_seat_layout(day_11_sample)))
+@assert 2199 == @show sum(evolve_to_fixed_point_part_2(parse_seat_layout(day_11_input)))
