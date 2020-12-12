@@ -832,3 +832,91 @@ end
 
 @assert 26 == @show sum(evolve_to_fixed_point_part_2(parse_seat_layout(day_11_sample)))
 @assert 2199 == @show sum(evolve_to_fixed_point_part_2(parse_seat_layout(day_11_input)))
+
+
+# Day 12
+
+day_12_sample = [
+    "F10",
+    "N3",
+    "F7",
+    "R90",
+    "F11"]
+day_12_input = readlines(open("input-12"))
+
+function drive_ferry(instructions) :: Tuple
+    # Coordinate system is a default 'math' coordinate system
+    # x is right (east), y is up (north)
+    position = (0, 0)
+    # The ship starts by facing east.
+    ship_orientation = 'E'
+    for instruction in instructions
+        (direction, distance) = decode_ferry_instruction(instruction)
+        if direction == 'F'
+            position = drive_ferry_compass(ship_orientation, distance, position...)
+        elseif direction == 'R'
+            for _ in 1:(distance/90)
+                ship_orientation = turn_ferry_right[ship_orientation]
+            end
+        elseif direction == 'L'
+            for _ in 1:(distance/90)
+                ship_orientation = turn_ferry_left[ship_orientation]
+            end
+        else
+            position = drive_ferry_compass(direction, distance, position...)
+        end
+    end
+    position
+end
+
+function drive_ferry_compass(direction::Char, distance, x, y) :: Tuple
+    if direction == 'N'
+        (x, y + distance)
+    elseif direction == 'E'
+        (x + distance, y)
+    elseif direction == 'S'
+        (x, y - distance)
+    elseif direction == 'W'
+        (x - distance, y)
+    end
+end
+
+turn_ferry_right = Dict('N' => 'E', 'E' => 'S', 'S' => 'W', 'W' => 'N')
+turn_ferry_left = Dict('N' => 'W', 'W' => 'S', 'S' => 'E', 'E' => 'N')
+
+decode_ferry_instruction(instruction::String) = (instruction[1], parse(Int, instruction[2:end]))
+
+@assert 25 == @show sum(abs.(drive_ferry(day_12_sample)))
+@assert 858 == @show sum(abs.(drive_ferry(day_12_input)))
+
+# Part 2
+
+
+function drive_ferry_waypoint(instructions) :: Tuple
+    position = (0, 0)
+    waypoint = (10, 1)
+    ship_orientation = 'E'
+    for instruction in instructions
+        (direction, distance) = decode_ferry_instruction(instruction)
+
+        if direction == 'F'
+            # drive to the waypoint `distance` times.
+            position = position .+ waypoint .* distance
+        elseif direction == 'R'
+            # rotate the waypoint around the ship
+            for _ in 1:(distance/90)
+                waypoint = (waypoint[2], -waypoint[1])
+            end
+        elseif direction == 'L'
+            for _ in 1:(distance/90)
+                waypoint = (-waypoint[2], waypoint[1])
+            end
+        else
+            waypoint = drive_ferry_compass(direction, distance, waypoint...)
+        end
+    end
+    position
+end
+
+@assert 286 == @show sum(abs.(drive_ferry_waypoint(day_12_sample)))
+@assert 39140 == @show sum(abs.(drive_ferry_waypoint(day_12_input)))
