@@ -920,3 +920,68 @@ end
 
 @assert 286 == @show sum(abs.(drive_ferry_waypoint(day_12_sample)))
 @assert 39140 == @show sum(abs.(drive_ferry_waypoint(day_12_input)))
+
+
+# Day 13, Bus schedule
+
+day_13_sample = (939, [7,13,Nothing(),Nothing(),59,Nothing(),31,19])
+day_13_lines = readlines(open("input-13"))
+parse_bus_number(word) = word == "x" ? Nothing() : parse(Int, word)
+day_13_input = (parse(Int, day_13_lines[1]), parse_bus_number.(split(day_13_lines[2], ",")))
+
+# What is the ID of the earliest bus you can take to the airport multiplied by
+# the number of minutes you'll need to wait for that bus?
+
+function minutes_of_wait(now, bus_number)
+    mod_offset = now % bus_number
+    (bus_number - mod_offset, bus_number)
+end
+
+function best_bus(input)
+    wait_vector = minutes_of_wait.(input[1], filter(x -> x != Nothing(), input[2]))
+    i = argmin(getindex.(wait_vector, 1))
+    wait_time, bus_number = wait_vector[i]
+    wait_time * bus_number
+end
+
+@assert 295 == @show best_bus(day_13_sample)
+@assert 4135 == @show best_bus(day_13_input)
+
+# Part 2
+# The shuttle company is running a contest: one gold coin for anyone that can
+# find the earliest timestamp such that the first bus ID departs at that time
+# and each subsequent listed bus ID departs at that subsequent minute. (The
+# first line in your input is no longer relevant.)
+
+# Looks like this requires you to apply the chinese remainder theorem.
+
+function chinese_bus(bus_numbers)
+    modulus = []
+    remainder = []
+    for (index, value) in enumerate(bus_numbers)
+        if value != Nothing()
+            push!(modulus, value)
+            # t + offset = 0 (mod modulus)
+            # => t = modulus - offset (mod modulus)
+            push!(remainder, value - (index - 1))
+        end
+    end
+    # Now, we appy the chinese remainder theorem to these requirements.
+    chineseremainder(Int128.(modulus), Int128.(remainder))
+end
+
+# See https://rosettacode.org/wiki/Chinese_remainder_theorem
+# This implementation leaves the Int64 bounds for my puzzle input -.-
+function chineseremainder(n::Array{Int128}, a::Array{Int128})
+    full_product = prod(n)
+    mod(sum(ai * invmod(full_product ÷ ni, ni) * full_product ÷ ni for (ni, ai) in zip(n, a)), full_product)
+end
+ 
+@assert 3417 == chinese_bus([17, nothing, 13, 19])
+@assert 754018 == chinese_bus([67,7,59,61 ])
+@assert 779210 == chinese_bus([67,nothing,7,59,61 ])
+@assert 1261476 == chinese_bus([67,7,nothing,59,61 ])
+@assert 1202161486 == chinese_bus([1789,37,47,1889 ])
+
+@assert 1068781 == @show chinese_bus(day_13_sample[2])
+@assert Int128(640856202464541) == @show chinese_bus(day_13_input[2])
