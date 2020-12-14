@@ -292,7 +292,6 @@ function parse_seat_id(seat_id::String)
         acc = 2 * acc + seat_digits[c]
     end
     acc
-    # reduce((new, acc) -> (2 * acc + seat_digits[new]), split(seat_id, ""), 0)
 end
 
 @assert 567 == parse_seat_id("BFFFBBFRRR")
@@ -985,3 +984,133 @@ end
 
 @assert 1068781 == @show chinese_bus(day_13_sample[2])
 @assert Int128(640856202464541) == @show chinese_bus(day_13_input[2])
+
+
+# Day 14
+
+# Doube bit masks and memory
+
+day_14_sample =[
+    "mask = XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X",
+    "mem[8] = 11",
+    "mem[7] = 101",
+    "mem[8] = 0" ]
+day_14_input = readlines(open("input-14"))
+
+zero_mask_dict = Dict('1' => 1, '0' => 0, 'X' => 1)
+one_mask_dict = Dict('1' => 1, '0' => 0, 'X' => 0)
+
+function binary_to_int(vec) :: Int64
+    acc = 0
+    for v in vec
+        acc = 2 * acc + v
+    end
+    acc
+end
+
+@assert binary_to_int([0, 1, 1, 0]) == 6
+
+# Mask where only the '1' char maps to a 1 bit. We | with this mask.
+parse_one_mask(str) = binary_to_int(getindex.(Ref(one_mask_dict), collect(str)))
+
+function parse_masks(str) :: Tuple{Int64, Int64}
+    # Mask where only the '0' char maps to a 0 bit. We & with this mask.
+    zero_mask = binary_to_int(getindex.(Ref(zero_mask_dict), collect(str)))
+    one_mask = parse_one_mask(str)
+    (zero_mask, one_mask)
+end
+
+use_masks(value::Int64, masks::Tuple{Int64, Int64}) :: Int64 = (value & masks[1]) | masks[2]
+
+function run_bitmask_program(lines)
+    mask = nothing
+    mem = Dict()
+    for line in lines
+        mask_match = match(r"mask = ([01X]+)", line)
+        mem_match = match(r"mem\[([0-9]+)\] = ([0-9]+)", line)
+        if mask_match != nothing
+            mask = parse_masks(mask_match[1])
+        elseif mem_match != nothing
+            index = parse(Int64, mem_match[1])
+            value = parse(Int64, mem_match[2])
+            mem[index] = use_masks(value, mask)
+        else
+            throw("Could not parse input: " + line)
+        end
+    end
+    sum(values(mem))
+end
+
+@assert 165 == @show run_bitmask_program(day_14_sample)
+@assert 15018100062885 == @show run_bitmask_program(day_14_input)
+
+# Part 2
+
+day_14_sample_2 = [
+    "mask = 000000000000000000000000000000X1001X", 
+    "mem[42] = 100", 
+    "mask = 00000000000000000000000000000000X0XX", 
+    "mem[26] = 1" ]
+
+# By running the regex (X[^X]*){9} and (X[^X]*){10} on my input I find that
+# there are at most 9 floating bits ('X's) in any mask. This means just
+# iterating the <= 512 combinations is ok and I don't need any clever math.
+
+# If the bitmask bit is 0, the corresponding memory address bit is unchanged.
+# If the bitmask bit is 1, the corresponding memory address bit is overwritten with 1.
+# If the bitmask bit is X, the corresponding memory address bit is floating.
+
+parse_floating_mask(str) = getindex.(Ref(Dict('1' => 0, '0' => 0, 'X' => 1)), collect(str))
+function build_floating_mask_vector(str)
+    parsed = parse_floating_mask(str)
+    # Zeroes stuff, so bits are 1 by default.
+    zero_masks = [Int64(0)]
+    # Sets stuff to one, so bits are 0 by default.
+    one_masks = [Int64(0)]
+    for p in parsed
+        if p == 0
+            zero_masks .*= 2
+            zero_masks .+= 1
+            one_masks .*= 2
+        else
+            zero_masks .*= 2
+            one_masks .*= 2
+            append!(zero_masks, zero_masks .+ 1)
+            append!(one_masks, one_masks .+ 1)
+        end
+    end
+    (zero_masks, one_masks)
+end
+
+@assert ([68719476702, 68719476734, 68719476703, 68719476735], [0, 32, 1, 33]) == 
+    build_floating_mask_vector("000000000000000000000000000000X1001X")
+
+function write_dict!(d, k, v)
+    d[k] = v
+end
+
+function run_bitmask_program_2(lines)
+    one_mask = nothing
+    z, o = nothing, nothing
+    mem = Dict()
+    for line in lines
+        mask_match = match(r"mask = ([01X]+)", line)
+        mem_match = match(r"mem\[([0-9]+)\] = ([0-9]+)", line)
+        if mask_match != nothing
+            one_mask = parse_one_mask(mask_match[1])
+            z, o = build_floating_mask_vector(mask_match[1])
+        elseif mem_match != nothing
+            index = parse(Int64, mem_match[1])
+            value = parse(Int64, mem_match[2])
+            indices = ((index .& z) .| o) .| one_mask
+            write_dict!.(Ref(mem), indices, value)
+        else
+            throw("Could not parse input: " + line)
+        end
+    end
+    sum(values(mem))
+end
+
+
+@assert 208 == @show run_bitmask_program_2(day_14_sample_2)
+@assert 5724245857696 == @show run_bitmask_program_2(day_14_input)
