@@ -1114,3 +1114,51 @@ end
 
 @assert 208 == @show run_bitmask_program_2(day_14_sample_2)
 @assert 5724245857696 == @show run_bitmask_program_2(day_14_input)
+
+# Day 15 - The game ends when the Elves get sick of playing.
+
+function number_diff_game(starting_sequence::Vector{Int64}, until::Int64)
+    i = 1
+    # Setup with the starting sequence
+    last_spoken_dict = Dict{Int64, Int64}()
+    for number in starting_sequence
+        last_spoken_dict[number] = i
+        i += 1
+    end
+    to_speak = 0
+    while i < until
+        if to_speak in keys(last_spoken_dict)
+            j = last_spoken_dict[to_speak]
+            last_spoken_dict[to_speak] = i
+            to_speak = i - j
+            i += 1
+        else
+            last_spoken_dict[to_speak] = i
+            to_speak = 0
+            i += 1
+        end
+    end
+    to_speak
+end
+
+@assert 436 == number_diff_game([0,3,6], 2020)
+@assert 1 == number_diff_game([1,3,2], 2020)
+@assert 10 == number_diff_game([2,1,3], 2020)
+@assert 27 == number_diff_game([1,2,3], 2020)
+@assert 78 == number_diff_game([2,3,1], 2020)
+@assert 438 == number_diff_game([3,2,1], 2020)
+@assert 1836 == number_diff_game([3,1,2], 2020)
+
+day_15_input = [2,0,1,7,4,14,18]
+@assert 496 == @show number_diff_game(day_15_input, 2020)
+
+# This takes a long time, so we are not recomputing it each time.
+# @assert 175594 == number_diff_game([0,3,6], 30000000)
+# @assert 2578 == number_diff_game([1,3,2], 30000000)
+# @assert 3544142 == number_diff_game([2,1,3], 30000000)
+# @assert 261214 == number_diff_game([1,2,3], 30000000)
+# @assert 6895259 == number_diff_game([2,3,1], 30000000)
+# @assert 18 == number_diff_game([3,2,1], 30000000)
+# @assert 362 == number_diff_game([3,1,2], 30000000)
+
+# @assert 883 == @show number_diff_game(day_15_input, 30000000)
