@@ -1232,7 +1232,114 @@ end
 
 # Part 2:
 
-# Missing for now.
+# TODO: Missing for now.
 
 
 # Day 17: Conway Cubes
+
+# - If a cube is active and exactly 2 or 3 of its neighbors are also active, the
+#   cube remains active. Otherwise, the cube becomes inactive.
+# - If a cube is inactive but exactly 3 of its neighbors are active, the cube
+#   becomes active. Otherwise, the cube remains inactive.
+
+day_17_sample = [
+    ".#.",
+    "..#",
+    "###"]
+
+day_17_input = [
+    "##.#....",
+    "...#...#",
+    ".#.#.##.",
+    "..#.#...",
+    ".###....",
+    ".##.#...",
+    "#.##..##",
+    "#.####.."]
+
+function parse_conway_cube(input)
+    grid = Int8.('#' .== hcat(collect.(input)...))
+    reshape(grid, size(grid)..., 1)
+end
+
+"""Grows the conway space and computes the next evolution step."""
+function next_conway_cube(old_small)
+    # Copy data into bigger space
+    old = zeros(Int8, (size(old_small) .+ 2)...)
+    w, h, l = size(old_small)
+    for x in 1:w, y in 1:h, z in 1:l
+        old[x+1, y+1, z+1] = old_small[x, y, z]
+    end
+
+    new = zeros(Int8, (size(old))...)
+    w, h, l = size(new)
+    for x in 1:w, y in 1:h, z in 1:l
+        acc = Int8(0)
+        for dx in -1:1, dy in -1:1, dz in -1:1
+            if dx == dy == dz == 0
+                continue
+            elseif 1 <= x+dx <= w && 1 <= y+dy <= w && 1 <= z+dz <= l
+                acc += old[x+dx, y+dy, z+dz]
+                # if acc >= 4
+                #     # no need to continue with the full cube
+                #     break
+                # end
+            end
+        end
+        if acc == 3
+            new[x, y, z] = 1
+        elseif acc == 2 && old[x, y, z] == 1
+            new[x, y, z] = 1
+        end
+    end
+    new
+end
+
+iterate_conway_cube(cube, i=6) = i <= 0 ? cube : iterate_conway_cube(next_conway_cube(cube), i-1)
+
+@assert 112 == @show sum(iterate_conway_cube(parse_conway_cube(day_17_sample)))
+@assert 291 == @show sum(iterate_conway_cube(parse_conway_cube(day_17_input)))
+
+# Part 2
+
+# Well that just sounds like part 1 with extra dimensions.
+
+
+function parse_conway_cube_4(input)
+    grid = Int8.('#' .== hcat(collect.(input)...))
+    reshape(grid, size(grid)..., 1, 1)
+end
+
+"""Grows the conway space and computes the next evolution step."""
+function next_conway_cube_4(old_small)
+    # Copy data into bigger space
+    old = zeros(Int8, (size(old_small) .+ 2)...)
+    wi, h, l, m = size(old_small)
+    for x in 1:wi, y in 1:h, z in 1:l, w in 1:m
+        old[x+1, y+1, z+1, w+1] = old_small[x, y, z, w]
+    end
+
+    new = zeros(Int8, (size(old))...)
+    wi, h, l, m = size(new)
+    for x in 1:wi, y in 1:h, z in 1:l, w in 1:m
+        acc = Int8(0)
+        for dx in -1:1, dy in -1:1, dz in -1:1, dw in -1:1
+            if dx == dy == dz == dw == 0
+                continue
+            elseif 1 <= x+dx <= wi && 1 <= y+dy <= h && 1 <= z+dz <= l && 1 <= w+dw <= m
+                acc += old[x+dx, y+dy, z+dz, w+dw]
+            end
+        end
+        if acc == 3
+            new[x, y, z, w] = 1
+        elseif acc == 2 && old[x, y, z, w] == 1
+            new[x, y, z, w] = 1
+        end
+    end
+    new
+end
+
+iterate_conway_cube_4(cube, i=6) = i <= 0 ? cube : iterate_conway_cube_4(next_conway_cube_4(cube), i-1)
+
+@assert 848 == @show sum(iterate_conway_cube_4(parse_conway_cube_4(day_17_sample)))
+@assert 1524 == @show sum(iterate_conway_cube_4(parse_conway_cube_4(day_17_input)))
