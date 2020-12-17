@@ -1162,3 +1162,77 @@ day_15_input = [2,0,1,7,4,14,18]
 # @assert 362 == number_diff_game([3,1,2], 30000000)
 
 # @assert 883 == @show number_diff_game(day_15_input, 30000000)
+
+
+# Day 16
+
+day_16_sample = [
+    "class: 1-3 or 5-7", 
+    "row: 6-11 or 33-44", 
+    "seat: 13-40 or 45-50", 
+    "", 
+    "your ticket:", 
+    "7,1,14", 
+    "", 
+    "nearby tickets:", 
+    "7,3,47", 
+    "40,4,50", 
+    "55,2,20", 
+    "38,6,12" ]
+day_16_input = readlines(open("input-16"))
+
+struct TicketConstraint
+    name :: String
+    min_1 :: Int
+    max_1 :: Int
+    min_2 :: Int
+    max_2 :: Int
+end
+
+function parse_ticket_constraint(line)
+    m = match(r"([^:]+): ([0-9]+)-([0-9]+) or ([0-9]+)-([0-9]+)", line)
+    if m != nothing
+        TicketConstraint(m[1], parse(Int, m[2]), parse(Int, m[3]), parse(Int, m[4]), parse(Int, m[5]))
+    else
+        nothing
+    end
+end
+
+function fits_constraint(c::TicketConstraint, number::Int)::Bool
+    (c.min_1 <= number <= c.max_1) || (c.min_2 <= number <= c.max_2)
+end
+
+function do_day_16_part_1(input)
+    constraints = []
+    while input[1] != ""
+        push!(constraints, parse_ticket_constraint(popat!(input, 1)))
+    end
+    popat!(input, 1) # Remove the empty line that indicates now comes our ticket
+    @assert "your ticket:" == popat!(input, 1)
+    my_ticket = parse.(Int, split(popat!(input, 1), ","))
+    @assert "" == popat!(input, 1)
+    @assert "nearby tickets:" == popat!(input, 1)
+    other_tickets = []
+    for line in input
+        push!(other_tickets, parse.(Int, split(line, ",")))
+    end
+
+    # Now do the actual computation:
+    error_sum = 0
+    for ticket in other_tickets, number in ticket
+        if !any(fits_constraint.(constraints, number))
+            error_sum += number
+        end
+    end
+    error_sum
+end
+
+@assert 71 == @show do_day_16_part_1(copy(day_16_sample))
+@assert 23925 == @show do_day_16_part_1(copy(day_16_input))
+
+# Part 2:
+
+# Missing for now.
+
+
+# Day 17: Conway Cubes
